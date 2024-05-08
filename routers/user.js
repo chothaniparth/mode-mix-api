@@ -10,7 +10,8 @@ const {
     verifyToken,
     addProducts,
     getProducts,
-    getAllEmployees
+    getAllEmployees,
+    search
 } = require('../controllers/user')
 const router = express.Router()
 
@@ -25,5 +26,6 @@ router.get('/verifyToken',verifyToken);
 router.post('/addProduct', addProducts);
 router.get('/fetchProducts', getProducts);
 router.get('/allEmployee', getAllEmployees);
+router.post('/search', search)
 
 module.exports = router;

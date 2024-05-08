@@ -14,29 +14,9 @@ function check (req, res){
 
 async function CreateEmployee(req, res) {
     try {
-        const { firstName, lastName, email, gender, password } = req.body;
-        if (!firstName || !lastName || !email || !gender || !password) {
-            return res.json({ success: false, msg: "Missing required fields" });
+        for(let i = 0; i < 10; i++){
+            
         }
-        if (gender !== 'male' && gender !== 'female' && gender !== 'other') {
-            return res.json({ success: false, msg: "Invalid gender" });
-        }
-        const emailExistsQuery = `SELECT COUNT(*) AS count FROM employeesInfo WHERE email = '${email}'`;
-        const emailExistsResult = await request.query(emailExistsQuery);
-        if (emailExistsResult.recordset[0].count > 0) {
-            return res.json({ success: false, msg: "Email already exists" });
-        }
-        const currentDate = new Date();
-        const formattedDate = currentDate.toISOString().replace('T', ' ').replace('Z', '');
-        const hashPassword = await bcrypt.hashSync(password, 10);
-        const insertQuery = `INSERT INTO employeesInfo (firstName, lastName, email, gender, createTime, password) OUTPUT inserted.id VALUES ('${firstName}', '${lastName}', '${email}', '${gender}','${formattedDate}', '${hashPassword}')`;
-        const insertResult = await request.query(insertQuery);
-        const generatedID = insertResult.recordset[0].id;
-        const token =  await jwt.sign({
-            id : generatedID,
-            email : email
-        }, secret, {expiresIn : '60s'})
-        return res.json({ success: true , token : token});
     } catch (error) {
         console.log("Create employee error:", error);
         return res.json({ success: false, msg: "Internal server error" });
@@ -238,38 +218,66 @@ async function getProducts (req, res){
 
 async function getAllEmployees(req, res) {
     try {
-        const { page = 1, pageSize = 3 } = req.query;
+        const { page, pageSize} = req.query;
         const skip = (page - 1) * pageSize;
-        // Query to fetch paginated data
-        const result = await request.query`SELECT * FROM employeesInfo ORDER BY Id OFFSET ${skip} ROWS FETCH NEXT ${pageSize} ROWS ONLY`;
-        console.log(result);
-        // Extract data from the result
+        if(!page || !pageSize){
+            return res.json({success : false, msg : 'page and pageSize is required.'})
+        }
+        const quary = `SELECT * FROM employeesInfo ORDER BY Id OFFSET ${skip} ROWS FETCH NEXT ${pageSize} ROWS ONLY`
+        const result = await request.query(quary);
         const data = result.recordset;
-        // Calculate total number of records
-        const totalRecords = data.length; // This can be improved based on your database engine
-        // Calculate total number of pages
-        const totalPages = Math.ceil(totalRecords / pageSize);
-        // Construct response object
+        // const totalRecords = data.length;
+        // const totalPages = Math.ceil(totalRecords / pageSize);
+        const countQuery = `SELECT COUNT(*) AS totalRecords FROM employeesInfo`;
+        const countResult = await request.query(countQuery);
+        const totalRecords = countResult.recordset[0].totalRecords;
+        // console.log(totalRecords);
         const response = {
-            data,
-            pagination: {
-                totalRecords,
-                totalPages,
-                currentPage: parseInt(page),
-                pageSize: parseInt(pageSize)
-            }
-        };
-        res.json({success : false});
+            data : data,
+            totalRecords : totalRecords
+            // pagination: {
+            //     totalRecords,
+            //     totalPages,
+            //     currentPage: parseInt(page),
+            //     pageSize: parseInt(pageSize)
+            // }
+        }
+        res.json({success : true, data : response});
     } catch (error) {
         console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({success : false, error: 'Internal server error' });
+    }
+}
+
+async function search(req, res){
+    try{
+        const { employeeName} = req.body;
+        if (!employeeName) {
+            return res.json({ success: false, msg: 'searchText is required.' });
+        }
+        const search = '%' + employeeName + '%';
+
+        const query = `
+            SELECT firstName, lastName, email
+            FROM employeesInfo 
+            WHERE firstName LIKE '${search}' OR lastName LIKE '${search}'
+        `;
+        const result = await request.query(query);
+        const data = result.recordset;
+        if(data.length === 0){
+            return res.json({success : false, msg : 'no data exits similar to the given value.'})
+        }
+        return res.json({ success: true, data });
+    }catch(error){
+        console.log('erro :', error);
+        return res.json({success : false, msg : 'system error'});
     }
 }
 
 module.exports = {
     check,
     CreateEmployee,
-    employeeEntry,
+    employeeEntry,  
     employeeExit,
     filterEmployeesInfo,
     getEmployeesEntry,
@@ -277,5 +285,6 @@ module.exports = {
     verifyToken,
     addProducts,
     getProducts,
-    getAllEmployees
+    getAllEmployees,
+    search
 }
