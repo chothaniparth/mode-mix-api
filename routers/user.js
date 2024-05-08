@@ -25,7 +25,7 @@ router.post('/login', handleLogin);
 router.get('/verifyToken',verifyToken);
 router.post('/addProduct', addProducts);
 router.get('/fetchProducts', getProducts);
-router.get('/allEmployee', getAllEmployees);
+router.get('/getAllEmployees', getAllEmployees)
 router.post('/search', search)
 
 module.exports = router;
